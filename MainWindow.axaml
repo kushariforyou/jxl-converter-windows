@@ -1,0 +1,198 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:JxlConverter"
+        x:Class="JxlConverter.MainWindow"
+        x:DataType="local:MainViewModel"
+        Title="JXL Converter"
+        Icon="/Assets/app.ico"
+        Width="1120" Height="700" MinWidth="920" MinHeight="580"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.header">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Opacity" Value="0.6" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Opacity" Value="0.65" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+    </Style>
+    <Style Selector="DataGridCell">
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Window.Styles>
+
+  <Grid ColumnDefinitions="*,1,310">
+
+    <!-- File list -->
+    <Grid Grid.Column="0" RowDefinitions="Auto,1,Auto,*">
+      <DockPanel Grid.Row="0" Margin="10,8" LastChildFill="False">
+        <Button DockPanel.Dock="Left" Content="Add Images…" Click="AddFiles_Click" IsEnabled="{Binding !IsRunning}"
+                ToolTip.Tip="Ctrl+O" />
+        <Button DockPanel.Dock="Left" Margin="6,0,0,0" Content="Add Folder…" Click="AddFolder_Click" IsEnabled="{Binding !IsRunning}" />
+        <Button DockPanel.Dock="Left" Margin="18,0,0,0" Content="Reset" Click="Reset_Click" IsEnabled="{Binding CanEditList}"
+                ToolTip.Tip="Put all files back in the queue to convert again" />
+        <Button DockPanel.Dock="Left" Margin="6,0,0,0" Content="Clear" Click="Clear_Click" IsEnabled="{Binding CanEditList}"
+                ToolTip.Tip="Remove all files from the list" />
+        <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Opacity="0.6" Text="{Binding ItemCountText}" />
+      </DockPanel>
+      <Border Grid.Row="1" Classes="divider" />
+
+      <Border Grid.Row="2" Background="#26E0B000" Padding="12" IsVisible="{Binding CjxlMissing}">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Content="Check Again" Click="CheckTools_Click" />
+          </StackPanel>
+          <StackPanel Spacing="2">
+            <TextBlock FontWeight="SemiBold" Text="⚠  The JPEG XL encoder (cjxl.exe) wasn't found." />
+            <TextBlock Classes="hint" Text="It should be in the 'tools' folder next to JXL Converter.exe. Re-extract the full zip, or put cjxl.exe on your PATH." />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Panel Grid.Row="3" x:Name="DropArea" DragDrop.AllowDrop="True" Background="Transparent">
+        <StackPanel IsVisible="{Binding !HasItems}" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+          <TextBlock Text="🖼" FontSize="54" HorizontalAlignment="Center" Opacity="0.6" />
+          <TextBlock Text="Drop images or folders here" FontSize="22" FontWeight="Medium" HorizontalAlignment="Center" />
+          <TextBlock Classes="hint" HorizontalAlignment="Center"
+                     Text="JPEG, PNG, GIF, HEIC, TIFF, WebP, AVIF, BMP, RAW and more" />
+          <Button Content="Choose Images…" HorizontalAlignment="Center" Padding="16,8" Margin="0,4,0,0" Click="AddFiles_Click" />
+        </StackPanel>
+
+        <DataGrid x:Name="Grid" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}"
+                  SelectionMode="Extended" IsReadOnly="True" CanUserReorderColumns="False"
+                  GridLinesVisibility="None" HeadersVisibility="Column" RowHeight="30"
+                  DoubleTapped="Grid_DoubleTapped">
+          <DataGrid.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="Show in Explorer" Click="Reveal_Click" />
+              <MenuItem Header="Remove from List" Click="Remove_Click" IsEnabled="{Binding !IsRunning}" InputGesture="Delete" />
+            </ContextMenu>
+          </DataGrid.ContextMenu>
+          <DataGrid.Columns>
+            <DataGridTemplateColumn Header="File" Width="3*" SortMemberPath="FileName">
+              <DataTemplate x:DataType="local:ConvItem">
+                <TextBlock Text="{Binding FileName}" ToolTip.Tip="{Binding Source}" VerticalAlignment="Center"
+                           Margin="10,0" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Original" Width="90">
+              <DataTemplate x:DataType="local:ConvItem">
+                <TextBlock Text="{Binding OriginalText}" VerticalAlignment="Center" Margin="10,0" Opacity="0.65" />
+              </DataTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="JPEG XL" Width="90">
+              <DataTemplate x:DataType="local:ConvItem">
+                <TextBlock Text="{Binding NewText}" VerticalAlignment="Center" Margin="10,0" />
+              </DataTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Saved" Width="84">
+              <DataTemplate x:DataType="local:ConvItem">
+                <TextBlock Text="{Binding SavedText}" Foreground="{Binding SavedBrush}" VerticalAlignment="Center" Margin="10,0" />
+              </DataTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Status" Width="2*">
+              <DataTemplate x:DataType="local:ConvItem">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="10,0" VerticalAlignment="Center"
+                            ToolTip.Tip="{Binding StatusText}">
+                  <ProgressBar IsIndeterminate="True" Width="40" MinWidth="40" VerticalAlignment="Center" IsVisible="{Binding IsConverting}" />
+                  <TextBlock Text="{Binding StatusGlyph}" Foreground="{Binding StatusBrush}" FontWeight="Bold" IsVisible="{Binding ShowGlyph}" />
+                  <TextBlock Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DataTemplate>
+            </DataGridTemplateColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+
+        <Border x:Name="DropHighlight" IsVisible="False" IsHitTestVisible="False" Margin="6" CornerRadius="10"
+                BorderThickness="3" BorderBrush="{DynamicResource SystemAccentColor}" Background="#140078D4" />
+      </Panel>
+    </Grid>
+
+    <Border Grid.Column="1" Classes="divider" Height="NaN" Width="1" />
+
+    <!-- Sidebar -->
+    <Grid Grid.Column="2" RowDefinitions="Auto,1,*,1,Auto" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <StackPanel Grid.Row="0" Margin="18,16" Spacing="4">
+        <TextBlock Classes="header" Text="{Binding SavedLabel}" />
+        <TextBlock Text="{Binding SavedText}" Foreground="{Binding SavedBrush}" FontSize="36" FontWeight="Bold" />
+        <TextBlock Text="{Binding PercentText}" Opacity="0.65" IsVisible="{Binding HasResults}" />
+        <TextBlock Text="{Binding BeforeAfterText}" FontSize="12" Opacity="0.55" IsVisible="{Binding HasResults}" />
+        <StackPanel IsVisible="{Binding HasBatch}" Spacing="4" Margin="0,6,0,0">
+          <ProgressBar Minimum="0" Maximum="{Binding BatchTotal}" Value="{Binding FinishedCount}" />
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding FailedText}" Foreground="#D73A49" FontSize="12" Margin="8,0,0,0" IsVisible="{Binding HasFailures}" />
+            <TextBlock DockPanel.Dock="Right" Text="{Binding SkippedText}" FontSize="12" Opacity="0.6" IsVisible="{Binding HasSkipped}" />
+            <TextBlock Text="{Binding ProgressText}" FontSize="12" Opacity="0.6" />
+          </DockPanel>
+        </StackPanel>
+      </StackPanel>
+      <Border Grid.Row="1" Classes="divider" />
+
+      <ScrollViewer Grid.Row="2">
+        <StackPanel Margin="18,16" Spacing="22">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="header" Text="COMPRESSION" />
+            <CheckBox Content="Lossless" IsChecked="{Binding Lossless}" />
+            <TextBlock Classes="hint" Text="{Binding LosslessHint}" />
+            <StackPanel IsEnabled="{Binding !Lossless}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Quality, StringFormat='{}{0:0}'}" Opacity="0.65" />
+                <TextBlock Text="Quality" />
+              </DockPanel>
+              <Slider Minimum="50" Maximum="99" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Quality}" />
+            </StackPanel>
+            <StackPanel>
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Effort, StringFormat='{}{0:0}'}" Opacity="0.65" />
+                <TextBlock Text="Effort" />
+              </DockPanel>
+              <Slider Minimum="1" Maximum="9" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Effort}" />
+              <TextBlock Classes="hint" Text="Higher is smaller but slower. 7 is the default." />
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Classes="header" Text="METADATA" />
+            <CheckBox Content="Preserve EXIF &amp; XMP metadata" IsChecked="{Binding KeepMetadata}" />
+            <TextBlock Classes="hint" Text="{Binding MetadataHint}" />
+            <TextBlock Classes="hint" Foreground="#E08A2E" Opacity="1" IsVisible="{Binding ShowExiftoolWarning}"
+                       Text="⚠ exiftool not found — metadata from HEIC/TIFF/RAW won't be copied." />
+          </StackPanel>
+
+          <StackPanel Spacing="8">
+            <TextBlock Classes="header" Text="OUTPUT" />
+            <RadioButton GroupName="out" Content="Next to originals" IsChecked="{Binding OutputNextToOriginals, Mode=OneWay}"
+                         Click="OutputNextTo_Click" />
+            <RadioButton GroupName="out" Content="Custom folder…" IsChecked="{Binding HasOutputFolder, Mode=OneWay}"
+                         Click="OutputCustom_Click" />
+            <DockPanel IsVisible="{Binding HasOutputFolder}">
+              <Button DockPanel.Dock="Right" Content="Change…" FontSize="12" Padding="8,3" Click="ChangeOutput_Click" />
+              <TextBlock Text="{Binding OutputFolder}" ToolTip.Tip="{Binding OutputFolder}" FontSize="12" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
+            </DockPanel>
+            <CheckBox Content="Keep original if JPEG XL is larger" IsChecked="{Binding SkipLarger}" />
+            <TextBlock Classes="hint" Text="Already-compressed formats like HEIC often grow; those .jxl files are discarded." />
+            <CheckBox Content="Overwrite existing .jxl files" IsChecked="{Binding Overwrite}" />
+            <TextBlock Classes="hint" Text="Original files are never modified." />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+      <Border Grid.Row="3" Classes="divider" />
+
+      <Panel Grid.Row="4" Margin="18,14">
+        <Button Classes="accent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,10"
+                Content="{Binding ConvertButtonText}" IsEnabled="{Binding CanConvert}" IsVisible="{Binding !IsRunning}"
+                Click="Convert_Click" ToolTip.Tip="Ctrl+Enter" />
+        <Button HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="0,10"
+                Content="Stop" IsVisible="{Binding IsRunning}" Click="Stop_Click" />
+      </Panel>
+    </Grid>
+  </Grid>
+</Window>
