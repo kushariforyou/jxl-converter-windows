@@ -19,6 +19,45 @@ public record Failure(string Message) : Outcome;
 
 public record ToolSet(string Cjxl, string? Exiftool);
 
+public record FoundFile(string Path, string RelativeDir);
+
+/// File-type groups offered when adding a folder.
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<FileKind>))]
+public enum FileKind { Jpeg, Png, Gif, Heic, Tiff, WebP, Avif, Bmp, Raw, Other }
+
+public static class FileKinds
+{
+    public static readonly FileKind[] All = Enum.GetValues<FileKind>();
+
+    public static string Title(FileKind kind) => kind switch
+    {
+        FileKind.Jpeg => "JPEG",
+        FileKind.Png => "PNG",
+        FileKind.Gif => "GIF",
+        FileKind.Heic => "HEIC / HEIF",
+        FileKind.Tiff => "TIFF",
+        FileKind.WebP => "WebP",
+        FileKind.Avif => "AVIF",
+        FileKind.Bmp => "BMP",
+        FileKind.Raw => "Camera RAW",
+        _ => "Other",
+    };
+
+    public static string[] Extensions(FileKind kind) => kind switch
+    {
+        FileKind.Jpeg => new[] { ".jpg", ".jpeg", ".jpe" },
+        FileKind.Png => new[] { ".png", ".apng" },
+        FileKind.Gif => new[] { ".gif" },
+        FileKind.Heic => new[] { ".heic", ".heif", ".hif" },
+        FileKind.Tiff => new[] { ".tif", ".tiff" },
+        FileKind.WebP => new[] { ".webp" },
+        FileKind.Avif => new[] { ".avif" },
+        FileKind.Bmp => new[] { ".bmp" },
+        FileKind.Raw => new[] { ".dng", ".cr2", ".cr3", ".nef", ".arw", ".raf", ".orf", ".rw2" },
+        _ => new[] { ".psd", ".tga", ".jp2", ".ico", ".ppm", ".pnm", ".pgm", ".pbm", ".pam", ".pfm", ".exr" },
+    };
+}
+
 // MARK: External tools
 
 public static class Tools
@@ -85,6 +124,29 @@ public static class Converter
     {
         var ext = Path.GetExtension(path);
         return DirectExts.Contains(ext) || DecodedExts.Contains(ext);
+    }
+
+    /// Lists matching images in a folder. RelativeDir includes the folder's own name so a custom
+    /// output folder mirrors the original structure.
+    public static List<FoundFile> ScanFolder(string folder, bool recursive, ISet<string> extensions)
+    {
+        var root = System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(folder).TrimEnd(System.IO.Path.DirectorySeparatorChar)) ?? "";
+        var opts = new EnumerationOptions
+        {
+            RecurseSubdirectories = recursive,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
+        };
+        var found = new List<FoundFile>();
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(folder, "*", opts))
+                if (extensions.Contains(System.IO.Path.GetExtension(f)))
+                    found.Add(new FoundFile(f, System.IO.Path.GetRelativePath(root, System.IO.Path.GetDirectoryName(f)!)));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return found;
     }
 
     public static Outcome Convert(string src, string relativeDir, ConvertOptions opts, ToolSet tools, CancellationToken ct)

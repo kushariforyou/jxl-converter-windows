@@ -34,8 +34,9 @@
     <Grid Grid.Column="0" RowDefinitions="Auto,1,Auto,*">
       <DockPanel Grid.Row="0" Margin="10,8" LastChildFill="False">
         <Button DockPanel.Dock="Left" Content="Add Images…" Click="AddFiles_Click" IsEnabled="{Binding !IsRunning}"
-                ToolTip.Tip="Ctrl+O" />
-        <Button DockPanel.Dock="Left" Margin="6,0,0,0" Content="Add Folder…" Click="AddFolder_Click" IsEnabled="{Binding !IsRunning}" />
+                ToolTip.Tip="Add images (Ctrl+O)" />
+        <Button DockPanel.Dock="Left" Margin="6,0,0,0" Content="Add Folder…" Click="AddFolder_Click" IsEnabled="{Binding !IsRunning}"
+                ToolTip.Tip="Add a folder of images (Ctrl+Shift+O)" />
         <Button DockPanel.Dock="Left" Margin="18,0,0,0" Content="Reset" Click="Reset_Click" IsEnabled="{Binding CanEditList}"
                 ToolTip.Tip="Put all files back in the queue to convert again" />
         <Button DockPanel.Dock="Left" Margin="6,0,0,0" Content="Clear" Click="Clear_Click" IsEnabled="{Binding CanEditList}"
@@ -62,7 +63,10 @@
           <TextBlock Text="Drop images or folders here" FontSize="22" FontWeight="Medium" HorizontalAlignment="Center" />
           <TextBlock Classes="hint" HorizontalAlignment="Center"
                      Text="JPEG, PNG, GIF, HEIC, TIFF, WebP, AVIF, BMP, RAW and more" />
-          <Button Content="Choose Images…" HorizontalAlignment="Center" Padding="16,8" Margin="0,4,0,0" Click="AddFiles_Click" />
+          <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,4,0,0">
+            <Button Content="Choose Images…" Padding="16,8" Click="AddFiles_Click" />
+            <Button Content="Choose Folder…" Padding="16,8" Click="AddFolder_Click" />
+          </StackPanel>
         </StackPanel>
 
         <DataGrid x:Name="Grid" ItemsSource="{Binding Items}" IsVisible="{Binding HasItems}"

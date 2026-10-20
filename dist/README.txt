@@ -18,7 +18,9 @@ Options
   Keep original if JPEG XL is larger   Discards .jxl files that came out bigger (common for HEIC).
   Output            Next to the originals, or a folder you choose. Originals are never changed.
 
-Shortcuts: Ctrl+O add images, Ctrl+Enter convert, Delete removes selected files.
+Adding a folder asks whether to include subfolders and which file types (JPEG, PNG, HEIC, ...) to add.
+
+Shortcuts: Ctrl+O add images, Ctrl+Shift+O add folder, Ctrl+Enter convert, Delete removes selected files.
 
 Requires 64-bit Windows 10 or 11. Nothing else needs installing.
 Bundled: libjxl cjxl 0.12.0 (BSD license) and ExifTool 13.59 by Phil Harvey (Perl Artistic license),

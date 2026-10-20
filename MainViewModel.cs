@@ -126,6 +126,10 @@ public partial class MainViewModel : ObservableObject
     private bool keepMetadata = true;
     [ObservableProperty] private bool overwrite;
     [ObservableProperty] private bool skipLarger = true;
+
+    // Folder import choices, remembered between uses.
+    public bool FolderRecursive { get; set; } = true;
+    public HashSet<FileKind> FolderExcludedKinds { get; set; } = new();
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OutputNextToOriginals), nameof(HasOutputFolder))]
     private string outputFolder = "";
@@ -228,33 +232,16 @@ public partial class MainViewModel : ObservableObject
 
     // MARK: Adding files
 
-    public void Add(IEnumerable<string> paths)
+    public void AddFound(IEnumerable<FoundFile> found)
     {
         if (IsRunning) return;
         var known = new HashSet<string>(Items.Select(i => Path.GetFullPath(i.Source)), StringComparer.OrdinalIgnoreCase);
         var added = new List<ConvItem>();
-
-        void Append(string file, string rel)
+        foreach (var f in found)
         {
-            var full = Path.GetFullPath(file);
-            if (!Converter.IsSupported(full) || !known.Add(full)) return;
-            added.Add(new ConvItem(full, rel, Converter.FileSize(full)));
-        }
-
-        foreach (var p in paths)
-        {
-            if (Directory.Exists(p))
-            {
-                var root = Path.GetDirectoryName(Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar)) ?? "";
-                var opts = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true,
-                                                    AttributesToSkip = FileAttributes.Hidden | FileAttributes.System };
-                foreach (var f in Directory.EnumerateFiles(p, "*", opts))
-                    Append(f, Path.GetRelativePath(root, Path.GetDirectoryName(f)!));
-            }
-            else if (File.Exists(p))
-            {
-                Append(p, "");
-            }
+            var full = Path.GetFullPath(f.Path);
+            if (!Converter.IsSupported(full) || !known.Add(full)) continue;
+            added.Add(new ConvItem(full, f.RelativeDir, Converter.FileSize(full)));
         }
         foreach (var item in added.OrderBy(i => i.Source, StringComparer.CurrentCultureIgnoreCase)) Items.Add(item);
     }
@@ -397,7 +384,8 @@ public partial class MainViewModel : ObservableObject
     private static string SettingsPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "JXL Converter", "settings.json");
 
-    private record SettingsData(bool Lossless, double Quality, double Effort, bool KeepMetadata, bool Overwrite, string OutputFolder, bool SkipLarger = true);
+    private record SettingsData(bool Lossless, double Quality, double Effort, bool KeepMetadata, bool Overwrite, string OutputFolder,
+                                bool SkipLarger = true, bool FolderRecursive = true, FileKind[]? FolderExcludedKinds = null);
 
     private static readonly HashSet<string> SettingNames = new()
         { nameof(Lossless), nameof(Quality), nameof(Effort), nameof(KeepMetadata), nameof(Overwrite), nameof(OutputFolder), nameof(SkipLarger) };
@@ -423,18 +411,21 @@ public partial class MainViewModel : ObservableObject
             Overwrite = s.Overwrite;
             OutputFolder = Directory.Exists(s.OutputFolder) ? s.OutputFolder : "";
             SkipLarger = s.SkipLarger;
+            FolderRecursive = s.FolderRecursive;
+            FolderExcludedKinds = new HashSet<FileKind>(s.FolderExcludedKinds ?? Array.Empty<FileKind>());
         }
         catch { }
         finally { _loading = false; }
     }
 
-    private void SaveSettings()
+    public void SaveSettings()
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(
-                new SettingsData(Lossless, Quality, Effort, KeepMetadata, Overwrite, OutputFolder, SkipLarger)));
+                new SettingsData(Lossless, Quality, Effort, KeepMetadata, Overwrite, OutputFolder, SkipLarger,
+                                 FolderRecursive, FolderExcludedKinds.ToArray())));
         }
         catch { }
     }

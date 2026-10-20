@@ -3,6 +3,7 @@
 A Windows app for batch-converting images to **JPEG XL** (`.jxl`).
 
 - Drag in images or whole folders: JPEG, PNG, GIF, HEIC, TIFF, WebP, AVIF, BMP, RAW and more
+- **Add Folder** asks whether to include subfolders and which file types to pick up (JPEG, PNG, HEIC, RAW, …), with a live count of matching images
 - **Lossless** checkbox: JPEGs are repacked losslessly (about 20% smaller, restorable bit-for-bit); other formats are pixel-perfect
 - Lossy mode with a quality slider, plus an effort slider for speed vs. size
 - **Preserve EXIF & XMP metadata** (camera info, GPS, dates, rotation, file timestamps), or strip it

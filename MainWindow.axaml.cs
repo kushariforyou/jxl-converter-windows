@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -17,7 +20,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _vm;
-        _vm.Add(startupPaths);
+        Opened += async (_, _) => await AddPathsAsync(startupPaths);
 
         DropArea.AddHandler(DragDrop.DragOverEvent, OnDragOver);
         DropArea.AddHandler(DragDrop.DragLeaveEvent, (_, _) => DropHighlight.IsVisible = false);
@@ -26,6 +29,18 @@ public partial class MainWindow : Window
     }
 
     private ConvItem[] Selected => Grid.SelectedItems.OfType<ConvItem>().ToArray();
+
+    /// Files are added straight away; folders first ask about subfolders and file types.
+    private async Task AddPathsAsync(IEnumerable<string> paths)
+    {
+        if (_vm.IsRunning) return;
+        var list = paths.ToList();
+        _vm.AddFound(list.Where(File.Exists).Select(p => new FoundFile(p, "")));
+        var folders = list.Where(Directory.Exists).ToList();
+        if (folders.Count == 0) return;
+        var found = await new FolderImportDialog(folders, _vm).ShowDialog<List<FoundFile>?>(this);
+        if (found != null) _vm.AddFound(found);
+    }
 
     // MARK: Drag & drop
 
@@ -40,14 +55,19 @@ public partial class MainWindow : Window
     {
         DropHighlight.IsVisible = false;
         var paths = e.Data.GetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>();
-        if (paths != null) _vm.Add(paths);
+        if (paths != null) _ = AddPathsAsync(paths);
     }
 
     // MARK: Keyboard
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.O)
+        if (e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) && e.Key == Key.O)
+        {
+            AddFolder_Click(null, e);
+            e.Handled = true;
+        }
+        else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.O)
         {
             AddFiles_Click(null, e);
             e.Handled = true;
@@ -73,8 +93,15 @@ public partial class MainWindow : Window
         {
             Title = "Choose images to convert to JPEG XL",
             AllowMultiple = true,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Images")
+                {
+                    Patterns = FileKinds.All.SelectMany(FileKinds.Extensions).Select(x => "*" + x).ToArray(),
+                },
+            },
         });
-        _vm.Add(files.Select(f => f.TryGetLocalPath()).OfType<string>());
+        await AddPathsAsync(files.Select(f => f.TryGetLocalPath()).OfType<string>());
     }
 
     private async void AddFolder_Click(object? sender, RoutedEventArgs e)
@@ -85,7 +112,7 @@ public partial class MainWindow : Window
             Title = "Choose folders of images to convert",
             AllowMultiple = true,
         });
-        _vm.Add(folders.Select(f => f.TryGetLocalPath()).OfType<string>());
+        await AddPathsAsync(folders.Select(f => f.TryGetLocalPath()).OfType<string>());
     }
 
     private void Reset_Click(object? sender, RoutedEventArgs e) => _vm.Requeue();

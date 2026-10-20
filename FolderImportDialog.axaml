@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="JxlConverter.FolderImportDialog"
+        Title="Add Folder"
+        Icon="/Assets/app.ico"
+        Width="460" SizeToContent="Height" CanResize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="22,20" Spacing="16">
+    <StackPanel Spacing="2">
+      <TextBlock x:Name="TitleText" FontSize="16" FontWeight="SemiBold" />
+      <TextBlock x:Name="PathText" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis" />
+    </StackPanel>
+
+    <StackPanel Spacing="2">
+      <CheckBox x:Name="RecursiveBox" Content="Include subfolders" />
+      <TextBlock x:Name="RecursiveHint" FontSize="12" Opacity="0.65" Margin="28,0,0,0" />
+    </StackPanel>
+
+    <StackPanel Spacing="6">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4">
+          <Button Content="All" Padding="6,2" Click="All_Click" />
+          <Button Content="None" Padding="6,2" Click="None_Click" />
+        </StackPanel>
+        <TextBlock Text="File types" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </DockPanel>
+      <UniformGrid x:Name="KindsGrid" Columns="2" />
+    </StackPanel>
+
+    <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+        <Button Content="Cancel" IsCancel="True" Click="Cancel_Click" />
+        <Button x:Name="AddButton" Classes="accent" IsDefault="True" Click="Add_Click" Content="Add" IsEnabled="False" />
+      </StackPanel>
+      <TextBlock x:Name="CountText" VerticalAlignment="Center" Opacity="0.65" Text="Scanning…" />
+    </DockPanel>
+  </StackPanel>
+</Window>
