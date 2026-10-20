@@ -107,6 +107,39 @@ public static class Tools
     }
 }
 
+/// Sends files to the Recycle Bin (Windows) or Trash (macOS) instead of deleting them outright.
+public static class Trash
+{
+    public static string Name => OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash";
+
+    public static bool Move(string path)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path,
+                    Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs,
+                    Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            }
+            else
+            {
+                var dir = OperatingSystem.IsMacOS()
+                    ? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".Trash")
+                    : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Trash", "files");
+                Directory.CreateDirectory(dir);
+                var name = System.IO.Path.GetFileNameWithoutExtension(path);
+                var ext = System.IO.Path.GetExtension(path);
+                var dest = System.IO.Path.Combine(dir, name + ext);
+                for (int n = 2; File.Exists(dest); n++) dest = System.IO.Path.Combine(dir, $"{name} {n}{ext}");
+                File.Move(path, dest);
+            }
+            return !File.Exists(path);
+        }
+        catch { return false; }
+    }
+}
+
 // MARK: Conversion
 
 public static class Converter
@@ -221,7 +254,7 @@ public static class Converter
             if (opts.SkipLarger && newSize >= FileSize(src))
             {
                 TryDelete(output);
-                return new Skipped("Kept original – JXL was larger");
+                return new Skipped("Skipped – would be larger");
             }
             return new Success(output, newSize, note);
         }

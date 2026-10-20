@@ -153,6 +153,27 @@ public partial class MainWindow : Window
         if (folders.FirstOrDefault()?.TryGetLocalPath() is { } path) _vm.OutputFolder = path;
     }
 
+    // MARK: Delete originals
+
+    private async void DeleteOriginals_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm.DeleteOriginals)
+        {
+            _vm.DeleteOriginals = false;
+            return;
+        }
+        // Undo the checkbox's own toggle until the user confirms.
+        DeleteOriginalsBox.IsChecked = false;
+        var yes = await new ConfirmDialog(
+            "Delete original files?",
+            $"After all conversions have completed, the original of every file that converted successfully " +
+            $"will be moved to the {Trash.Name}.\n\nFiles that are skipped or fail are kept, and nothing is " +
+            "deleted if you stop the conversion.",
+            "Yes, Delete Originals", "No").ShowDialog<bool>(this);
+        _vm.DeleteOriginals = yes;
+        DeleteOriginalsBox.IsChecked = yes;
+    }
+
     // MARK: Convert
 
     private async void Convert_Click(object? sender, RoutedEventArgs e) => await _vm.StartAsync();

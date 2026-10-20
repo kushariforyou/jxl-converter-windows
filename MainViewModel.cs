@@ -46,6 +46,10 @@ public partial class ConvItem : ObservableObject
     [NotifyPropertyChangedFor(nameof(StatusText), nameof(StatusGlyph), nameof(StatusBrush))]
     private string? message;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusText))]
+    private bool originalTrashed;
+
     public string NewText => NewSize is { } n ? Bytes.Format(n) : "—";
 
     public string SavedText
@@ -67,8 +71,8 @@ public partial class ConvItem : ObservableObject
     {
         ItemStatus.Pending => "Waiting",
         ItemStatus.Converting => "Converting",
-        ItemStatus.Done => Message ?? "Done",
-        ItemStatus.Skipped => Message ?? "Kept original",
+        ItemStatus.Done => Message ?? (OriginalTrashed ? $"Done – original in {Trash.Name}" : "Done"),
+        ItemStatus.Skipped => Message ?? "Skipped",
         _ => Message ?? "Failed",
     };
 
@@ -126,6 +130,15 @@ public partial class MainViewModel : ObservableObject
     private bool keepMetadata = true;
     [ObservableProperty] private bool overwrite;
     [ObservableProperty] private bool skipLarger = true;
+
+    // Deliberately not saved between launches, so it is never on by surprise.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(OriginalsHint), nameof(OriginalsHintBrush))]
+    private bool deleteOriginals;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TrashedText), nameof(HasTrashed))]
+    private int trashedCount;
 
     // Folder import choices, remembered between uses.
     public bool FolderRecursive { get; set; } = true;
@@ -198,6 +211,12 @@ public partial class MainViewModel : ObservableObject
     public bool HasBatch => BatchTotal > 0;
     public bool HasFailures => FailedCount > 0;
     public bool HasSkipped => SkippedCount > 0;
+    public bool HasTrashed => TrashedCount > 0;
+    public string TrashedText => $"🗑 {TrashedCount} original{(TrashedCount == 1 ? "" : "s")} moved to {Trash.Name}";
+    public string OriginalsHint => DeleteOriginals
+        ? $"When all conversions finish, originals of successfully converted files go to the {Trash.Name}."
+        : "Original files are never modified.";
+    public IBrush OriginalsHintBrush => DeleteOriginals ? Palette.Orange : Palette.Muted;
 
     public string ItemCountText => HasItems ? $"{Items.Count} images" : "";
     public string ConvertButtonText => PendingCount > 0 ? $"Convert {PendingCount} to JPEG XL" : "Convert to JPEG XL";
@@ -208,7 +227,7 @@ public partial class MainViewModel : ObservableObject
     public string BeforeAfterText => $"{Bytes.Format(BytesIn)} → {Bytes.Format(BytesOut)}";
     public string ProgressText => $"{FinishedCount} of {BatchTotal} done";
     public string FailedText => $"{FailedCount} failed";
-    public string SkippedText => $"{SkippedCount} kept";
+    public string SkippedText => $"{SkippedCount} skipped";
     public string LosslessHint => Lossless
         ? "Pixel-perfect. JPEGs are repacked losslessly (≈20% smaller) and can be restored bit-for-bit."
         : "Lossy. Smaller files; 90 is visually lossless.";
@@ -263,6 +282,8 @@ public partial class MainViewModel : ObservableObject
     public void Requeue()
     {
         if (IsRunning) return;
+        // Files whose originals were moved to the trash can't be converted again.
+        foreach (var gone in Items.Where(i => i.OriginalTrashed).ToList()) Items.Remove(gone);
         foreach (var i in Items)
         {
             i.Status = ItemStatus.Pending;
@@ -276,7 +297,7 @@ public partial class MainViewModel : ObservableObject
 
     private void ResetStats()
     {
-        DoneCount = FailedCount = SkippedCount = BatchTotal = 0;
+        DoneCount = FailedCount = SkippedCount = BatchTotal = TrashedCount = 0;
         BytesIn = BytesOut = 0;
         _timer.Stop();
         DisplayedSaved = DisplayedPercent = 0;
@@ -321,11 +342,29 @@ public partial class MainViewModel : ObservableObject
         }).ToList();
 
         await Task.WhenAll(tasks);
+        // Originals are only removed once the whole batch has finished and wasn't stopped.
+        if (DeleteOriginals && !ct.IsCancellationRequested) await TrashOriginalsAsync(jobs);
         IsRunning = false;
         RefreshCounts();
     }
 
     public void Stop() => _cts?.Cancel();
+
+    private async Task TrashOriginalsAsync(IEnumerable<ConvItem> batch)
+    {
+        // Only originals whose .jxl really exists are removed; skipped and failed files stay.
+        var done = batch.Where(i => i.Status == ItemStatus.Done && i.Output != null && Converter.FileSize(i.Output) > 0).ToList();
+        foreach (var item in done)
+        {
+            var ok = await Task.Run(() => Trash.Move(item.Source));
+            if (ok)
+            {
+                item.OriginalTrashed = true;
+                TrashedCount++;
+            }
+            else item.Message = $"Original couldn't be moved to {Trash.Name}";
+        }
+    }
 
     private void Apply(ConvItem item, Outcome outcome)
     {

@@ -101,7 +101,7 @@
                 <TextBlock Text="{Binding SavedText}" Foreground="{Binding SavedBrush}" VerticalAlignment="Center" Margin="10,0" />
               </DataTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Status" Width="2*">
+            <DataGridTemplateColumn Header="Status" Width="2.4*">
               <DataTemplate x:DataType="local:ConvItem">
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="10,0" VerticalAlignment="Center"
                             ToolTip.Tip="{Binding StatusText}">
@@ -135,6 +135,7 @@
             <TextBlock DockPanel.Dock="Right" Text="{Binding SkippedText}" FontSize="12" Opacity="0.6" IsVisible="{Binding HasSkipped}" />
             <TextBlock Text="{Binding ProgressText}" FontSize="12" Opacity="0.6" />
           </DockPanel>
+          <TextBlock Text="{Binding TrashedText}" FontSize="12" Opacity="0.6" IsVisible="{Binding HasTrashed}" />
         </StackPanel>
       </StackPanel>
       <Border Grid.Row="1" Classes="divider" />
@@ -181,10 +182,13 @@
               <TextBlock Text="{Binding OutputFolder}" ToolTip.Tip="{Binding OutputFolder}" FontSize="12" VerticalAlignment="Center"
                          TextTrimming="CharacterEllipsis" Margin="0,0,6,0" />
             </DockPanel>
-            <CheckBox Content="Keep original if JPEG XL is larger" IsChecked="{Binding SkipLarger}" />
-            <TextBlock Classes="hint" Text="Already-compressed formats like HEIC often grow; those .jxl files are discarded." />
+            <CheckBox Content="Skip files that would get larger" IsChecked="{Binding SkipLarger}" />
+            <TextBlock Classes="hint" Text="If the JPEG XL would be bigger than the original (common for HEIC), that file isn’t converted and no .jxl is saved." />
             <CheckBox Content="Overwrite existing .jxl files" IsChecked="{Binding Overwrite}" />
-            <TextBlock Classes="hint" Text="Original files are never modified." />
+            <CheckBox x:Name="DeleteOriginalsBox" Content="Delete originals after converting"
+                      IsChecked="{Binding DeleteOriginals, Mode=OneWay}" IsEnabled="{Binding !IsRunning}"
+                      Click="DeleteOriginals_Click" />
+            <TextBlock Classes="hint" Opacity="1" Text="{Binding OriginalsHint}" Foreground="{Binding OriginalsHintBrush}" />
           </StackPanel>
         </StackPanel>
       </ScrollViewer>

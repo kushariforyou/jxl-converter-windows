@@ -1,0 +1,15 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="JxlConverter.ConfirmDialog"
+        Icon="/Assets/app.ico"
+        Width="420" SizeToContent="Height" CanResize="False"
+        ShowInTaskbar="False" WindowStartupLocation="CenterOwner">
+  <StackPanel Margin="22,20" Spacing="14">
+    <TextBlock x:Name="HeadingText" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Opacity="0.85" />
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,6,0,0">
+      <Button x:Name="NoButton" IsCancel="True" IsDefault="True" Click="No_Click" />
+      <Button x:Name="YesButton" Background="#D73A49" Foreground="White" Click="Yes_Click" />
+    </StackPanel>
+  </StackPanel>
+</Window>

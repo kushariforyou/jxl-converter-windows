@@ -15,8 +15,12 @@ Options
   Lossless          Pixel-perfect output. JPEGs are repacked losslessly (~20% smaller).
   Quality / Effort  Used for lossy output / speed-vs-size trade-off.
   Preserve EXIF & XMP metadata   Keeps camera info, GPS, dates and file timestamps.
-  Keep original if JPEG XL is larger   Discards .jxl files that came out bigger (common for HEIC).
-  Output            Next to the originals, or a folder you choose. Originals are never changed.
+  Skip files that would get larger     If the JPEG XL would be bigger than the original (common for
+                                       HEIC), that file is not converted.
+  Output            Next to the originals, or a folder you choose.
+  Delete originals after converting   Asks for confirmation. When all conversions finish, originals of
+                                      successfully converted files go to the Recycle Bin. Skipped or
+                                      failed files are kept. Otherwise originals are never changed.
 
 Adding a folder asks whether to include subfolders and which file types (JPEG, PNG, HEIC, ...) to add.
 
